@@ -58,7 +58,7 @@ for word in text.split():
 print("Hi from Brazil:", matrix)
 ```
 
-    Hi from Brazil: [ 1.  0.  0.]
+    Hi from Brazil: [ 1.  1.  1.]
 
 
 
