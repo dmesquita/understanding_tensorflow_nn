@@ -1,4 +1,9 @@
+# Classifying Text with Neural Networks and TensorFlow
+Hi! I was having a hard time learning how to use TensorFlow, so I got angry and I decided that I would learn how to use it and that I would also share the knowledge to help other people as well :)
 
+You can check the blog post [here](https://medium.freecodecamp.org/big-picture-machine-learning-classifying-text-with-neural-networks-and-tensorflow-d94036ac2274) (there are more details about Neural Networks there) or if you are in a hurry check just check the code below ;)
+
+***
 
 ```python
 import pandas as pd
