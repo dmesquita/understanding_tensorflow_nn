@@ -178,28 +178,40 @@ print("Index of the word 'the':",word2index['the'])
 
 
 ```python
+def text_to_vector(text):
+    layer = np.zeros(total_words,dtype=float)
+    for word in text.split(' '):
+        layer[word2index[word.lower()]] += 1
+        
+    return layer
+
+def category_to_vector(category):
+    y = np.zeros((3),dtype=float)
+    if category == 0:
+        y[0] = 1.
+    elif category == 1:
+        y[1] = 1.
+    else:
+        y[2] = 1.
+        
+    return y
+```
+
+
+```python
 def get_batch(df,i,batch_size):
     batches = []
     results = []
     texts = df.data[i*batch_size:i*batch_size+batch_size]
     categories = df.target[i*batch_size:i*batch_size+batch_size]
+    
     for text in texts:
-        layer = np.zeros(total_words,dtype=float)
-        for word in text.split(' '):
-            layer[word2index[word.lower()]] += 1
-            
+        layer = text_to_vector(text) 
         batches.append(layer)
         
     for category in categories:
-        y = np.zeros((3),dtype=float)
-        if category == 0:
-            y[0] = 1.
-        elif category == 1:
-            y[1] = 1.
-        else:
-            y[2] = 1.
-        results.append(y)
-            
+        y = category_to_vector(category)
+        results.append(y)  
      
     return np.array(batches),np.array(results)
 ```
@@ -280,6 +292,9 @@ optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(loss)
 
 # Initializing the variables
 init = tf.global_variables_initializer()
+
+# [NEW] Add ops to save and restore all the variables
+saver = tf.train.Saver()
 ```
 
 
@@ -312,18 +327,144 @@ with tf.Session() as sess:
     total_test_data = len(newsgroups_test.target)
     batch_x_test,batch_y_test = get_batch(newsgroups_test,0,total_test_data)
     print("Accuracy:", accuracy.eval({input_tensor: batch_x_test, output_tensor: batch_y_test}))
+    
+    # [NEW] Save the variables to disk
+    save_path = saver.save(sess, "/tmp/model.ckpt")
+    print("Model saved in path: %s" % save_path)
 ```
 
-    Epoch: 0001 loss= 1133.908114347
-    Epoch: 0002 loss= 329.093700409
-    Epoch: 0003 loss= 111.876660109
-    Epoch: 0004 loss= 72.552971845
-    Epoch: 0005 loss= 16.673050320
-    Epoch: 0006 loss= 16.481995190
-    Epoch: 0007 loss= 4.848220565
-    Epoch: 0008 loss= 0.759822878
-    Epoch: 0009 loss= 0.000000000
-    Epoch: 0010 loss= 0.079848485
+    Epoch: 0001 loss= 1289.632795854
+    Epoch: 0002 loss= 270.930032210
+    Epoch: 0003 loss= 220.176122665
+    Epoch: 0004 loss= 119.421511043
+    Epoch: 0005 loss= 47.321779143
+    Epoch: 0006 loss= 32.028330424
+    Epoch: 0007 loss= 11.666836267
+    Epoch: 0008 loss= 15.337957333
+    Epoch: 0009 loss= 6.931441394
+    Epoch: 0010 loss= 0.000000000
     Optimization Finished!
-    Accuracy: 0.75
+    Accuracy: 0.749153
+    Model saved in path: /tmp/model.ckpt
+
+
+## Making a prediction
+
+### 1 text
+
+
+```python
+# Get a text to make a prediction
+text_for_prediction = newsgroups_test.data[5]
+```
+
+
+```python
+print('text',text_for_prediction)
+```
+
+    text From: neff@iaiowa.physics.uiowa.edu (John S. Neff)
+    Subject: Re: Space spinn offs
+    Nntp-Posting-Host: pluto.physics.uiowa.edu
+    Organization: The University of Iowa
+    Lines: 23
+    
+    In article <1rruis$9do@bigboote.WPI.EDU> wfbrown@wpi.WPI.EDU (William F Brown) writes:
+    >From: wfbrown@wpi.WPI.EDU (William F Brown)
+    >Subject: Re: Space spinn offs
+    >Date: 30 Apr 1993 19:27:24 GMT
+    >I just wanted to point out, that Teflon wasn't from the space program.
+    >It was from the WWII nuclear weapons development program.  Pipes in the 
+    >system for fractioning and enriching uranium had to be lined with it.
+    >
+    >Uranium Hexafloride was the chemical they turned the pitchblend into for
+    >enrichment.  It is massively corrosive.  Even to Stainless steels. Hence
+    >the need for a very inert substaance to line the pipes with.  Teflon has
+    >all its molecular sockets bound up already, so it is very unreactive.
+    >
+    >My 2 sense worth.
+    >
+    >Bill
+    >
+    
+    The artifical pacemaker was invented in 1958 by Wilson Greatbatch an
+    American biomedical engineer. The bill authorizing NASA was signed
+    in October of 1958 so it is clear that NASA had nothing to do with
+    the invention of the pacemaker.
+    
+    
+
+
+
+```python
+print("Text correct category:", newsgroups_test.target[5])
+```
+
+    Text correct category: 2
+
+
+
+```python
+# Convert text to vector so we can send it to our model
+vector_txt = text_to_vector(text)
+# Wrap vector like we do in get_batches()
+input_array = np.array([vector_txt])
+```
+
+
+```python
+input_array.shape
+```
+
+
+
+
+    (1, 119930)
+
+
+
+
+```python
+saver = tf.train.Saver()
+
+with tf.Session() as sess:
+    saver.restore(sess, "/tmp/model.ckpt")
+    print("Model restored.")
+    
+    classification = sess.run(tf.argmax(prediction, 1), feed_dict={input_tensor: input_array})
+    print("Predicted category:", classification)
+```
+
+    Model restored.
+    Predicted category: [0]
+
+
+### 10 texts
+
+
+```python
+# Get 10 texts to make a prediction
+
+x_10_texts,y_10_correct_labels = get_batch(newsgroups_test,0,10)
+
+saver = tf.train.Saver()
+
+with tf.Session() as sess:
+    saver.restore(sess, "/tmp/model.ckpt")
+    print("Model restored.")
+    
+    classification = sess.run(tf.argmax(prediction, 1), feed_dict={input_tensor: x_10_texts})
+    print("Predicted categories:", classification)
+```
+
+    Model restored.
+    Predicted categories: [1 0 2 0 1 2 1 0 1 2]
+
+
+
+```python
+print("Correct categories:", np.argmax(y_10_correct_labels, 1))
+```
+
+    Correct categories: [1 0 1 0 1 2 2 0 1 2]
 
